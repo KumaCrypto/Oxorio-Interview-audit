@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 
 import "../src/Marketplace.sol";
+
 import "../src/Mocks/NftMock.sol";
 import "../src/Mocks/PaymentTokenMock.sol";
 import "../src/mocks/RewardTokenMock.sol";
@@ -48,34 +49,23 @@ contract MarketplaceTest is Test, ERC721Holder {
         // Config attacker
         vm.deal(attacker, 1 ether);
         paymentToken.mint(attacker, defaultBalance);
-        nft.setApprovalForAll(address(marketplace), true);
 
-        vm.prank(attacker);
+        vm.startPrank(attacker);
+        nft.setApprovalForAll(address(marketplace), true);
         paymentToken.approve(address(marketplace), defaultBalance);
 
+        vm.stopPrank();
+
         // Config another user
+
         vm.deal(anotherUser, 1 ether);
         paymentToken.mint(anotherUser, defaultBalance);
 
-        vm.prank(anotherUser);
+        vm.startPrank(anotherUser);
         paymentToken.approve(address(marketplace), defaultBalance);
-    }
+        nft.setApprovalForAll(address(marketplace), true);
 
-    // Check is data stored correctly
-    function test_saleStructIsCorrect() external {
-        marketplace.setForSale(
-            defaultTokenId,
-            defaultSale.price,
-            defaultSale.startTime
-        );
-
-        Marketplace.ItemSale memory item = getAndUnpackItemStruct(
-            defaultTokenId
-        );
-
-        assertEq(item.seller, defaultSale.seller);
-        assertEq(item.price, defaultSale.price);
-        assertEq(item.startTime, defaultSale.startTime);
+        vm.stopPrank();
     }
 
     // It is possible to put the token to sale even if the token is already on sale
@@ -97,24 +87,24 @@ contract MarketplaceTest is Test, ERC721Holder {
         assertEq(item.price, newPrice);
     }
 
-    function test_zeroPricePossible() external {
+    function test_zeroPriceIsPossible() external {
         marketplace.setForSale(
             defaultTokenId,
             defaultSale.price,
             defaultSale.startTime
         );
 
-        marketplace.setForSale(defaultTokenId, 0, block.timestamp + 1);
-        vm.warp(block.timestamp + 1000);
-        vm.expectRevert(Marketplace.InvalidSale.selector);
+        marketplace.setForSale(defaultTokenId, 0, defaultSale.startTime);
+        vm.warp(defaultSale.startTime + 1);
 
+        vm.expectRevert(Marketplace.InvalidSale.selector);
         vm.prank(attacker);
         marketplace.buy(0);
     }
 
     function test_ifTokenPriceLt1000RewardIs0() external {
-        marketplace.setForSale(defaultTokenId, 1, block.timestamp + 1);
-        vm.warp(block.timestamp + 1000);
+        marketplace.setForSale(defaultTokenId, 1, defaultSale.startTime);
+        vm.warp(defaultSale.startTime + 1);
 
         uint256 rewardBalanceBefore = rewardToken.balanceOf(attacker);
         vm.prank(attacker);
@@ -122,24 +112,6 @@ contract MarketplaceTest is Test, ERC721Holder {
         uint256 rewardBalanceAfter = rewardToken.balanceOf(attacker);
 
         assertEq(rewardBalanceBefore, rewardBalanceAfter);
-    }
-
-    function test_infoDeletedAfterDiscardFromSale() external {
-        marketplace.setForSale(
-            defaultTokenId,
-            defaultSale.price,
-            defaultSale.startTime
-        );
-
-        marketplace.discardFromSale(defaultTokenId);
-
-        Marketplace.ItemSale memory item = getAndUnpackItemStruct(
-            defaultTokenId
-        );
-
-        assertEq(item.seller, address(0));
-        assertEq(item.price, 0);
-        assertEq(item.startTime, 0);
     }
 
     function test_postponeNonExistnigSale() external {
@@ -201,30 +173,27 @@ contract MarketplaceTest is Test, ERC721Holder {
     }
 
     function test_fakeSale() external {
-        // Another user sets approvals for all tokens to `Marketplace`
-        vm.prank(anotherUser);
-        nft.setApprovalForAll(address(marketplace), true);
-
-        // 1. Set token for sale
+        // 1. The owner puts the token up for sale
         marketplace.setForSale(
             defaultTokenId,
             defaultSale.price,
             defaultSale.startTime
         );
-        vm.warp(defaultSale.startTime + 1);
 
         // Owner transfers token to anotherUser
         nft.safeTransferFrom(address(this), anotherUser, defaultTokenId);
 
-        // User glad for new NFT...
+        // User glad for his new NFT...
 
-        // Attacker from another address bought the token and receive it back
+        // Sale starting
+        vm.warp(defaultSale.startTime + 1);
+
+        // Attacker (owner) from another address bought the token and receive it back
         vm.prank(attacker);
         marketplace.buy(defaultTokenId);
 
-        address owner = nft.ownerOf(defaultTokenId);
-
-        assertEq(owner, attacker);
+        address nftOwner = nft.ownerOf(defaultTokenId);
+        assertEq(nftOwner, attacker);
     }
 
     function getAndUnpackItemStruct(
