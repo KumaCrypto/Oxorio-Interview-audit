@@ -133,6 +133,8 @@ For example, a user with one reward tries to withdraw it:
 
 The result is an error: `Index out of bounds`, because the `_rewards` array has an element only under index 0, but not 1.
 
+[Test case](https://github.com/KumaCrypto/Oxorio-Interview-audit/blob/6eccd8290053f5b44f7b1943e0ceb9f0c46f8556/test/Marketplace.t.sol#L160-L173)
+
 ##### Recommendation
 
 Rework the logic of rewarding users
@@ -221,6 +223,8 @@ Such a situation may occur:
 2. Negotiates the sale of a token on another platform with a user who has `setApprovalForAll` or `Approve` for `Marketplace`.
 3. Calls the `buy` function and takes the token back to itself.
 
+[Test case](https://github.com/KumaCrypto/Oxorio-Interview-audit/blob/6eccd8290053f5b44f7b1943e0ceb9f0c46f8556/test/Marketplace.t.sol#L175-L197)
+
 ##### Recommendation
 
 At the time of sale, transfer the token to the `Marketplace`.
@@ -236,6 +240,8 @@ At the time of sale, transfer the token to the `Marketplace`.
 Line: 124 - 127
 
 The user can put the token for sale, then take advantage of the fact that the `postponeSale` function uses an assembly that does not check for variable overflow, to pass a value that will cause an overflow and further malfunction of the smart-contract.
+
+[Test case](https://github.com/KumaCrypto/Oxorio-Interview-audit/blob/6eccd8290053f5b44f7b1943e0ceb9f0c46f8556/test/Marketplace.t.sol#L128-L158)
 
 ##### Recommendation
 
@@ -254,6 +260,8 @@ Line: 106
 In the function `setForSale` there is no check that the token is on sale and therefore the user, can re-call `setForSale` that will overwrite the data stored in `items`.
 
 In `Marketplace` contract is an unused custom error: `AlreadyOnSale`, which logically should have been used in the check.
+
+[Test case](https://github.com/KumaCrypto/Oxorio-Interview-audit/blob/6eccd8290053f5b44f7b1943e0ceb9f0c46f8556/test/Marketplace.t.sol#L72-L88)
 
 ##### Recommendation
 
@@ -289,6 +297,8 @@ The user's way:
 1. Call the `setForSale` function with a price other than zero.
 2. Call the `setForSale` function with a price equal to zero.
 
+[Test case](https://github.com/KumaCrypto/Oxorio-Interview-audit/blob/6eccd8290053f5b44f7b1943e0ceb9f0c46f8556/test/Marketplace.t.sol#L90-L103)
+
 ##### Recommendation
 
 Add a check that the selling price of the token is not 0.
@@ -309,7 +319,7 @@ Add a check that the token for which the function is called is on sale.
 
 Add a check that the selling price of the token is not 0.
 
----
+[Test case](https://github.com/KumaCrypto/Oxorio-Interview-audit/blob/6eccd8290053f5b44f7b1943e0ceb9f0c46f8556/test/Marketplace.t.sol#L117-L126)
 
 #### 5. Failure to buy if seller did not approve OR setApprovalForAll to marketplace
 
